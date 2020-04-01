@@ -30,6 +30,10 @@ public class RequestBuilder {
         }
     }
 
+    void addPathParam(String name, String value) {
+        relativeUrl = relativeUrl.replace("{" + name + "}",value);
+    }
+
     Request.Builder get() {
         HttpUrl url;
         HttpUrl.Builder urlBuilder = this.urlBuilder;

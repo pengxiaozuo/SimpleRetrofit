@@ -4,7 +4,7 @@ import java.io.IOException;
 
 public abstract class ParameterHandler<T> {
 
-    abstract void apply(RequestBuilder requestBuilder, T value);
+    abstract void apply(RequestBuilder requestBuilder, T value) throws IOException;
 
     static class Query<T> extends ParameterHandler<T> {
 
@@ -19,14 +19,24 @@ public abstract class ParameterHandler<T> {
         }
 
         @Override
-        void apply(RequestBuilder requestBuilder, T value) {
-            String queryValue = null;
-            try {
-                queryValue = stringConverter.convert(value);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        void apply(RequestBuilder requestBuilder, T value) throws IOException {
+            String queryValue = stringConverter.convert(value);
             requestBuilder.addQueryParam(name,queryValue,encoded);
+        }
+    }
+
+    static class Path<T> extends ParameterHandler<T> {
+        String name;
+        Converter<T,String> stringConverter;
+
+        public Path(String name, Converter<T, String> stringConverter) {
+            this.name = name;
+            this.stringConverter = stringConverter;
+        }
+
+        @Override
+        void apply(RequestBuilder requestBuilder, T value) throws IOException {
+            requestBuilder.addPathParam(name,stringConverter.convert(value));
         }
     }
 }

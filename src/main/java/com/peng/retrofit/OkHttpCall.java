@@ -35,13 +35,13 @@ public class OkHttpCall<T>implements Call<T> {
         return Response.success(t, response);
     }
 
-    private okhttp3.Call getRawCall(){
+    private okhttp3.Call getRawCall() throws IOException {
         okhttp3.Call call = rawCall;
         if (call != null) return call;
         return rawCall = createRawCall();
     }
 
-    private okhttp3.Call createRawCall()  {
+    private okhttp3.Call createRawCall() throws IOException {
         return callFactory.newCall(requestFactory.create(args));
     }
 }

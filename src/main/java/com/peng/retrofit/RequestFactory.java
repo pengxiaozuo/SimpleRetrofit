@@ -1,12 +1,18 @@
 package com.peng.retrofit;
 
 import com.peng.retrofit.http.Get;
+import com.peng.retrofit.http.Path;
 import com.peng.retrofit.http.Query;
 import okhttp3.Request;
 
+import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class RequestFactory {
 
@@ -30,7 +36,7 @@ public class RequestFactory {
         return new RequestFactory.Builder(retrofit, method).build();
     }
 
-    public Request create(Object[] args) {
+    public Request create(Object[] args) throws IOException {
         ParameterHandler<Object>[] handlers = (ParameterHandler<Object>[]) parameterHandlers;
         RequestBuilder requestBuilder = new RequestBuilder(httpMethod, baseUrl, relativeUrl);
         int argumentCount = args.length;
@@ -49,7 +55,6 @@ public class RequestFactory {
         ParameterHandler<?>[] parameterHandlers;
         String relativeUrl;
         String httpMethod;
-
         Builder(Retrofit retrofit, Method method) {
             this.retrofit = retrofit;
             this.method = method;
@@ -99,6 +104,11 @@ public class RequestFactory {
                 boolean encoded = query.encoded();
                 Converter<?, String> stringConverter = retrofit.stringConverter(type,annotations);
                 return new ParameterHandler.Query<>(stringConverter, name, encoded);
+            } else if (annotation instanceof Path) {
+                Path path = (Path) annotation;
+                Converter<?, String> stringConverter = retrofit.stringConverter(type, annotations);
+                String name = path.value();
+                return new ParameterHandler.Path<>(name, stringConverter);
             }
             return null;
         }
