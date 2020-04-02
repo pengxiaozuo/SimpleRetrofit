@@ -24,7 +24,7 @@ public class RxJavaCallAdapterFactory implements CallAdapter.Factory {
         if (returnType instanceof ParameterizedType) {
             ParameterizedType t = (ParameterizedType) returnType;
             if (t.getRawType() == Observable.class) {
-                return new RxJavaCallAdapter(t.getActualTypeArguments()[0]);
+                return new RxJavaCallAdapter<>(t.getActualTypeArguments()[0]);
             }
         }
         return null;
@@ -64,7 +64,6 @@ public class RxJavaCallAdapterFactory implements CallAdapter.Factory {
                 observer.onNext(response.body());
                 observer.onComplete();
             } catch (IOException e) {
-//                e.printStackTrace();
                 observer.onError(e);
             }
         }

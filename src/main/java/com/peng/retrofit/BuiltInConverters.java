@@ -8,6 +8,9 @@ import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 
+/**
+ * 内置的转化器工厂
+ */
 class BuiltInConverters implements Converter.Factory {
 
 
@@ -18,6 +21,7 @@ class BuiltInConverters implements Converter.Factory {
 
     @Override
     public Converter<ResponseBody, ?> responseConverter(Type type, Annotation[] annotations, Retrofit retrofit) {
+        //如果返回值类型是ResponseBody则用BufferingResponseBodyConverter
         if (type == ResponseBody.class) {
             return BufferingResponseBodyConverter.INSTANCE;
         }
