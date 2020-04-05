@@ -39,9 +39,11 @@ public class RequestFactory {
         ParameterHandler<Object>[] handlers = (ParameterHandler<Object>[]) parameterHandlers;
         RequestBuilder requestBuilder = new RequestBuilder(httpMethod, baseUrl, relativeUrl);
         int argumentCount = args.length;
+        //循环应用参数处理器
         for (int p = 0; p < argumentCount; p++) {
             handlers[p].apply(requestBuilder, args[p]);
         }
+        //构建Request
         return requestBuilder.get().build();
     }
 
@@ -54,6 +56,8 @@ public class RequestFactory {
         ParameterHandler<?>[] parameterHandlers;
         String relativeUrl;
         String httpMethod;
+        boolean gotQuery;
+        boolean gotPath;
         Builder(Retrofit retrofit, Method method) {
             this.retrofit = retrofit;
             this.method = method;
@@ -116,6 +120,7 @@ public class RequestFactory {
          */
         ParameterHandler<?> parseParameterAnnotation(int index, Type type, Annotation[] annotations, Annotation annotation) {
             if (annotation instanceof Query) {
+                gotQuery = true;
                 //如果是Query注解，则需要拿到参数名 和对应的参数值转换器
                 Query query = (Query) annotation;
                 String name = query.value();
@@ -124,6 +129,10 @@ public class RequestFactory {
                 Converter<?, String> stringConverter = retrofit.stringConverter(type, annotations);
                 return new ParameterHandler.Query<>(stringConverter, name, encoded);
             } else if (annotation instanceof Path) {
+                if (gotQuery) {
+                    throw new IllegalArgumentException("Path注解不能在Query注解后面");
+                }
+                gotPath = true;
                 //如果是Path注解，则需要拿到参数名 和对应的参数值转换器
                 Path path = (Path) annotation;
                 //资源路径是url中所以也是需要StringConverter

@@ -11,7 +11,7 @@ public class OkHttpCall<T>implements Call<T> {
     okhttp3.Call.Factory callFactory;
     private okhttp3.Call rawCall;
 
-    public OkHttpCall(RequestFactory requestFactory, Converter<ResponseBody, T> responseConverter,
+    OkHttpCall(RequestFactory requestFactory, Converter<ResponseBody, T> responseConverter,
                       Object[] args, okhttp3.Call.Factory callFactory) {
         this.requestFactory = requestFactory;
         this.responseConverter = responseConverter;
@@ -24,14 +24,13 @@ public class OkHttpCall<T>implements Call<T> {
         return parseResponse(getRawCall().execute());
     }
 
-    private Response<T> parseResponse(okhttp3.Response response) {
+    /**
+     * okhttp3.Response -> Response<T>
+     */
+    private Response<T> parseResponse(okhttp3.Response response) throws IOException {
         ResponseBody body = response.body();
-        T t = null;
-        try {
-            t = responseConverter.convert(body);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        //转换ResponseBody -> T
+        T t = responseConverter.convert(body);
         return Response.success(t, response);
     }
 

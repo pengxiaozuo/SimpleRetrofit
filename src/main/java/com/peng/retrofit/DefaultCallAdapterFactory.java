@@ -10,6 +10,12 @@ import java.lang.reflect.Type;
 class DefaultCallAdapterFactory implements CallAdapter.Factory {
     @Override
     public CallAdapter<?, ?> get(Type returnType, Annotation[] animations, Retrofit retrofit) {
+        if (Utils.getRawType(returnType) != Call.class) {
+            return null;
+        }
+        if (!(returnType instanceof ParameterizedType)){
+            throw new IllegalArgumentException("返回值必须是泛型参数类型");
+        }
         return new CallAdapter<Object, Call<?>>() {
             @Override
             public Type responseType() {

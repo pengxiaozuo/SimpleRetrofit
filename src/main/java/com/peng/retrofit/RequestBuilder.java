@@ -3,7 +3,10 @@ package com.peng.retrofit;
 import okhttp3.HttpUrl;
 import okhttp3.Request;
 
-public class RequestBuilder {
+/**
+ * 请求参数等构建
+ */
+class RequestBuilder {
     private final String method;
     private final String baseUrl;
     private String relativeUrl;
@@ -11,13 +14,16 @@ public class RequestBuilder {
 
     private final Request.Builder requestBuilder;
 
-    public RequestBuilder(String method, String baseUrl, String relativeUrl) {
+    RequestBuilder(String method, String baseUrl, String relativeUrl) {
         this.method = method;
         this.baseUrl = baseUrl;
         this.relativeUrl = relativeUrl;
         this.requestBuilder = new Request.Builder();
     }
 
+    /**
+     * 添加query参数 (?name=value&name1=value1)
+     */
     void addQueryParam(String name, String value, boolean encoded) {
         if (relativeUrl != null) {
             urlBuilder = HttpUrl.parse(baseUrl).newBuilder(relativeUrl);
@@ -30,6 +36,9 @@ public class RequestBuilder {
         }
     }
 
+    /**
+     * 替换资源路径
+     */
     void addPathParam(String name, String value) {
         relativeUrl = relativeUrl.replace("{" + name + "}",value);
     }

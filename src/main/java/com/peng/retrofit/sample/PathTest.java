@@ -13,11 +13,11 @@ public class PathTest {
     public static void main(String[] args) throws IOException {
 
         Retrofit retrofit = new Retrofit.Builder()
-            .baseUrl("https://api.github.com")
+            .baseUrl("https://api.github.com/")
             .build();
         GitHubApi github = retrofit.create(GitHubApi.class);
-        Response<ResponseBody> response = github.contributors("square", "retrofit")
-            .execute();
+        Call<ResponseBody> call = github.contributors("square", "retrofit");
+        Response<ResponseBody> response = call.execute();
         ResponseBody body = response.body();
         String string = body.string();
         System.out.println(string);

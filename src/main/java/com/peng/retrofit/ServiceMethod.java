@@ -3,7 +3,7 @@ package com.peng.retrofit;
 
 import java.lang.reflect.Method;
 
-public abstract class ServiceMethod<T> {
+abstract class ServiceMethod<T> {
     /**
      * 执行方法调用
      */

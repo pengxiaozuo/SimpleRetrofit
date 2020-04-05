@@ -2,7 +2,11 @@ package com.peng.retrofit;
 
 import java.io.IOException;
 
-public abstract class ParameterHandler<T> {
+/**
+ * 注解参数处理器
+ * @param <T>
+ */
+abstract class ParameterHandler<T> {
 
     abstract void apply(RequestBuilder requestBuilder, T value) throws IOException;
 
@@ -12,7 +16,7 @@ public abstract class ParameterHandler<T> {
         String name;
         boolean encoded;
 
-        public Query(Converter<T, String> stringConverter, String name, boolean encoded) {
+        Query(Converter<T, String> stringConverter, String name, boolean encoded) {
             this.stringConverter = stringConverter;
             this.name = name;
             this.encoded = encoded;
@@ -29,7 +33,7 @@ public abstract class ParameterHandler<T> {
         String name;
         Converter<T,String> stringConverter;
 
-        public Path(String name, Converter<T, String> stringConverter) {
+        Path(String name, Converter<T, String> stringConverter) {
             this.name = name;
             this.stringConverter = stringConverter;
         }
