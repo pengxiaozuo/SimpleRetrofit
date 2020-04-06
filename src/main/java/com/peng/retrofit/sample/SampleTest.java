@@ -12,7 +12,7 @@ import java.io.IOException;
 public class SampleTest {
     public static void main(String[] args) throws IOException {
         Retrofit retrofit = new Retrofit.Builder()
-            .baseUrl("http://localhost")
+            .baseUrl("http://localhost/")
             .build();
         ApiService apiService = retrofit.create(ApiService.class);
         Call<ResponseBody> call = apiService.test("hello");

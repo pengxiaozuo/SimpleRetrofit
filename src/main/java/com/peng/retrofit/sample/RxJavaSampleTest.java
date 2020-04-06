@@ -18,7 +18,7 @@ import java.io.IOException;
 public class RxJavaSampleTest {
     public static void main(String[] args) throws IOException {
         Retrofit retrofit = new Retrofit.Builder()
-            .baseUrl("http://localhost")
+            .baseUrl("http://localhost/")
             .addConverterFactory(GsonConverterFactory.create())
             .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
             .build();
