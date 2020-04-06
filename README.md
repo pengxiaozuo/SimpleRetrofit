@@ -354,9 +354,39 @@ static <ResponseT, ReturnT> HttpServiceMethod<ResponseT, ReturnT> parseAnnotatio
     //返回子类实例
     return new CallAdapted<>(requestFactory, callFactory, responseConverter, callAdapter);
 }
+private static <ResponseT> Converter<ResponseBody, ResponseT> createResponseConverter(
+    Retrofit retrofit, Method method, Type responseType) {
+    return retrofit.responseBodyConverter(responseType,method.getAnnotations());
+}
+private static <ReturnT, ResponseT> CallAdapter<ResponseT, ReturnT> createCallAdapter(
+    Retrofit retrofit, Method method, Type returnType, Annotation[] annotations) {
+    return (CallAdapter<ResponseT, ReturnT>) retrofit.callAdapter(returnType,annotations);
+}
 ```
 
-主要是解析返回值拿到CallAdapter 和 responseConverter 并返回其子类实现CallAdapted
+主要是解析返回值拿到CallAdapter 和 responseConverter 并返回其子类实现CallAdapted,需要注意的是如何拿到Converter和CallAdapter,我们看下responseBodyConverter方法
+
+```java
+<T> Converter<ResponseBody, T> responseBodyConverter(Type type, Annotation[] annotations) {
+    return nextResponseBodyConverter(type, annotations);
+}
+
+@SuppressWarnings("unchecked")
+private <T> Converter<ResponseBody, T> nextResponseBodyConverter(Type type, Annotation[] annotations) {
+    //获取ResponseBody->T的转换器，如果找到直接返回，没找到抛异常
+    for (int i = 0; i < converterFactories.size(); i++) {
+        Converter<ResponseBody, ?> converter = converterFactories.get(i)
+            .responseConverter(type, annotations, this);
+        //只要工厂get方法返回不是null就当他返回了可以处理的Converter，直接返回，后面的就没有机会了
+        if (converter != null) {
+            return (Converter<ResponseBody, T>) converter;
+        }
+    }
+    throw new IllegalArgumentException("没有找到可以处理的ResponseBodyConverter");
+}
+```
+
+循环之前自定义添加的Factory和内置的集合循环调用responseConverter方法，如果返回不为null则认为可以处理，直接返回，也就是说和添加顺序是有关系的，如果添加了2个都可以处理同一种类型转换器，那么后面的就没有机会处理了，requestBodyConverter 和 callAdapter 方法也是同样的流程
 
 到这里为止，方法的解析就完了，主要是拿到ServiceMethod,包含下面的：
 
