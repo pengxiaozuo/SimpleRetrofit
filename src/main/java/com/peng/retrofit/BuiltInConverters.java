@@ -16,6 +16,9 @@ class BuiltInConverters implements Converter.Factory {
 
     @Override
     public Converter<?, RequestBody> requestConverter(Type type, Annotation[] parameterAnnotations, Annotation[] methodAnnotations, Retrofit retrofit) {
+        if (RequestBody.class.isAssignableFrom(Utils.getRawType(type))) {
+            return RequestBodyConverter.INSTANCE;
+        }
         return null;
     }
 
@@ -48,6 +51,13 @@ class BuiltInConverters implements Converter.Factory {
             } finally {
                 value.close();
             }
+        }
+    }
+    static final class RequestBodyConverter implements Converter<RequestBody, RequestBody> {
+        static final RequestBodyConverter INSTANCE = new RequestBodyConverter();
+
+        @Override public RequestBody convert(RequestBody value) {
+            return value;
         }
     }
 }

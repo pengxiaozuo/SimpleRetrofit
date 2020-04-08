@@ -1,9 +1,19 @@
 package com.peng.retrofit;
 
+import com.peng.retrofit.http.Body;
+import com.peng.retrofit.http.Field;
+import com.peng.retrofit.http.FormUrlEncoded;
 import com.peng.retrofit.http.Get;
+import com.peng.retrofit.http.Multipart;
+import com.peng.retrofit.http.Part;
 import com.peng.retrofit.http.Path;
+import com.peng.retrofit.http.Post;
 import com.peng.retrofit.http.Query;
+
+import okhttp3.Headers;
+import okhttp3.MultipartBody;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -18,7 +28,8 @@ public class RequestFactory {
     Method method;
     String httpMethod;
     ParameterHandler<?>[] parameterHandlers;
-
+    boolean isFormEncoded;
+    boolean isMultipart;
     RequestFactory(Builder builder) {
         this.baseUrl = builder.retrofit.baseUrl;
         this.relativeUrl = builder.relativeUrl;
@@ -26,6 +37,8 @@ public class RequestFactory {
         this.method = builder.method;
         this.httpMethod = builder.httpMethod;
         this.parameterHandlers = builder.parameterHandlers;
+        this.isFormEncoded = builder.isFormEncoded;
+        this.isMultipart = builder.isMultipart;
     }
 
     static RequestFactory parseAnnotations(Retrofit retrofit, Method method) {
@@ -37,7 +50,7 @@ public class RequestFactory {
      */
     public Request create(Object[] args) throws IOException {
         ParameterHandler<Object>[] handlers = (ParameterHandler<Object>[]) parameterHandlers;
-        RequestBuilder requestBuilder = new RequestBuilder(httpMethod, baseUrl, relativeUrl);
+        RequestBuilder requestBuilder = new RequestBuilder(httpMethod, baseUrl, relativeUrl, isFormEncoded, isMultipart);
         int argumentCount = args.length;
         //循环应用参数处理器
         for (int p = 0; p < argumentCount; p++) {
@@ -58,6 +71,12 @@ public class RequestFactory {
         String httpMethod;
         boolean gotQuery;
         boolean gotPath;
+        boolean gotField;
+        boolean gotPart;
+        boolean gotBody;
+        boolean hasBody;
+        boolean isFormEncoded;
+        boolean isMultipart;
         Builder(Retrofit retrofit, Method method) {
             this.retrofit = retrofit;
             this.method = method;
@@ -72,6 +91,14 @@ public class RequestFactory {
             for (Annotation annotation : methodAnnotations) {
                 parseMethodAnnotation(annotation);
             }
+            if (!hasBody) {
+                if (isMultipart) {
+                    throw new IllegalArgumentException("Multipart 只能用与可以携带请求体的请求方式中使用，比如POST");
+                }
+                if (isFormEncoded) {
+                    throw new IllegalArgumentException("FormUrlEncoded 只能用与可以携带请求体的请求方式中使用，比如POST");
+                }
+            }
             //解析方法参数,返回相应的参数处理器实例
             int parameterCount = paramsAnnotationsArray.length;
             parameterHandlers = new ParameterHandler[parameterCount];
@@ -79,6 +106,15 @@ public class RequestFactory {
                 parameterHandlers[index] = parseParameter(index, parameterTypes[index], paramsAnnotationsArray[index], index == last);
             }
 
+            if (!isMultipart && !isFormEncoded && !hasBody && gotBody) {
+                throw new IllegalArgumentException("Http请求方式不能包含请求体");
+            }
+            if (isFormEncoded && !gotField) {
+                throw new IllegalArgumentException("Field和FormUrlEncoded必须配套使用");
+            }
+            if (isMultipart && gotPart) {
+                throw new IllegalArgumentException("Part和Multipart必须配套使用");
+            }
             return new RequestFactory(this);
         }
 
@@ -89,16 +125,29 @@ public class RequestFactory {
         void parseMethodAnnotation(Annotation annotation) {
             if (annotation instanceof Get) {
                 //@Get的请求方法就是GET，相当地址是注解的value方法返回值
-                parseHttpMethodAndPath("GET", ((Get) annotation).value());
+                parseHttpMethodAndPath("GET", ((Get) annotation).value(),false);
+            } else if (annotation instanceof Post) {
+                parseHttpMethodAndPath("POST", ((Post) annotation).value(),true);
+            } else if (annotation instanceof FormUrlEncoded) {
+                if (isMultipart) {
+                    throw new  IllegalArgumentException("FormUrlEncoded 和 Multipart不能同时使用");
+                }
+                isFormEncoded = true;
+            } else if (annotation instanceof Multipart) {
+                if (isFormEncoded) {
+                    throw new  IllegalArgumentException("FormUrlEncoded 和 Multipart不能同时使用");
+                }
+                isMultipart = true;
             }
         }
 
         /**
          * 解析请求方法和url
          */
-        void parseHttpMethodAndPath(String httpMethod, String value) {
+        void parseHttpMethodAndPath(String httpMethod, String value,boolean hasBody) {
             this.httpMethod = httpMethod;
             this.relativeUrl = value;
+            this.hasBody = hasBody;
         }
 
         /**
@@ -139,6 +188,51 @@ public class RequestFactory {
                 Converter<?, String> stringConverter = retrofit.stringConverter(type, annotations);
                 String name = path.value();
                 return new ParameterHandler.Path<>(name, stringConverter);
+            } else if (annotation instanceof Part) {
+                if (!isMultipart) {
+                    throw new IllegalArgumentException("Part必须和Multipart配套使用");
+                }
+                gotPart = true;
+                Part part = (Part) annotation;
+                String name = part.value();
+                String encoding = part.encoding();
+                Class<?> rawType = Utils.getRawType(type);
+                if (name.isEmpty()) {
+                    if (MultipartBody.Part.class.isAssignableFrom(rawType)) {
+                        return ParameterHandler.RawPart.INSTANCE;
+                    } else {
+                        throw new IllegalArgumentException("空value的Part只可以注解MultipartBody.Part");
+                    }
+                } else {
+                    if (MultipartBody.Part.class.isAssignableFrom(rawType)) {
+                        throw new IllegalArgumentException("Part只注解MultipartBody.Part注解是不可以给value赋值");
+                    }
+                    Headers headers = Headers.of("Content-Disposition","from-data; name=\"" + name +"\"",
+                        "Content-Transfer-Encoding",encoding);
+                    Converter<?, RequestBody> requestBodyConverter =
+                        retrofit.requestBodyConverter(type,annotations,methodAnnotations);
+                    return new ParameterHandler.Part<>(name,requestBodyConverter,encoding,headers);
+                }
+            } else if (annotation instanceof Field) {
+                if (!isFormEncoded) {
+                    throw new IllegalArgumentException("Field必须和FormUrlEncoded配套使用");
+                }
+                gotField = true;
+                Field field = (Field) annotation;
+                boolean encoded = field.encoded();
+                Converter<?, String> stringConverter = retrofit.stringConverter(type, annotations);
+                return new ParameterHandler.Field<>(field.value(), stringConverter, encoded);
+            } else if (annotation instanceof Body) {
+                if (isFormEncoded || isMultipart) {
+                    throw new IllegalArgumentException("Body参数注解无法使用from编码方式");
+                }
+                if (gotBody) {
+                    throw new IllegalArgumentException("不能使用多个Body参数注解");
+                }
+                gotBody = true;
+                Converter<?, RequestBody> requestBodyConverter =
+                    retrofit.requestBodyConverter(type,annotations,methodAnnotations);
+                return new ParameterHandler.Body<>(requestBodyConverter);
             }
             //到这里说明这个注解不是本框架的参数注解直接返回null就好了
             return null;
